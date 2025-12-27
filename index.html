@@ -14,7 +14,7 @@
         .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
         @media (max-width: 900px) { 
             .container { grid-template-columns: 1fr; }
-            .column.sidebar { order: 2; } /* Moves sidebar below main actions on mobile */
+            .column.sidebar { order: 2; } 
             .column.main { order: 1; }
         }
         .column { background: var(--widget-bg); border-radius: 8px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
@@ -31,8 +31,8 @@
         .drag-handle { cursor: grab; color: #ccc; padding-right: 5px; font-size: 1.2em; display: inline-block; }
         .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; margin: 2px 0; white-space: nowrap; }
         .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 140px; padding: 2px; }
-        .inline-tag-input { border: none !important; background: transparent !important; flex-grow: 1; min-width: 80px !important; outline: none; padding: 4px !important; margin: 0 !important; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; min-height: 40px; padding: 4px; box-sizing: border-box; }
+        .inline-tag-input { border: none !important; background: transparent !important; flex: 1; min-width: 100px !important; outline: none; padding: 4px !important; margin: 0 !important; }
         .delete-btn { background: none; color: var(--primary-color); font-size: 1.1em; width: auto; margin: 0; padding: 0; }
         .summary-box { background: #f1f8e9; border: 2px solid var(--payback-color); padding: 16px; margin-top: 16px; border-radius: 6px; }
         .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; text-align: center; }
@@ -59,10 +59,10 @@
                 <div class="full-span">
                     <label>Tags</label>
                     <div class="tag-container" id="qa-tag-area" style="border: 1px solid var(--border-color); padding: 5px; background: #fff; border-radius: 6px;">
-                        <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Tag" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
+                        <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Tag (Enter/Comma)" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
                     </div>
                 </div>
-                <div class="full-span"><input type="text" id="qa-note" placeholder="What was it? (e.g. Lunch)"></div>
+                <div class="full-span"><input type="text" id="qa-note" placeholder="Note (Hotel, Dinner, etc.)"></div>
             </div>
             <button id="add-expense-btn" class="primary">Add & Auto-Save</button>
 
@@ -127,6 +127,7 @@
     </div>
 
     <script>
+        // --- PASTE YOUR URL HERE ---
         const MASTER_PIPE_URL = "https://script.google.com/macros/s/AKfycbw2XEmPawAoyPdkT5Ys5yL0bCZdpDPjCmbERZGqJ9dLH4ELuUUQZtMLl3EiA4awR0Ur/exec"; 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -164,8 +165,55 @@
                 } catch(e) { UI.cloudStatus.textContent = "Auto-Save Failed."; }
             }
 
-            document.getElementById('cloud-save-btn').onclick = triggerAutoSave;
+            // --- GLOBAL ACTIONS (FIXED THE SCOPE PROBLEM HERE) ---
+            window.removePerson = (i) => {
+                const name = state.people[i];
+                if(confirm(`Mack, you sure? Removing ${name} will mess with the split calculation if they're already in the log.`)) {
+                    state.people.splice(i, 1);
+                    renderPeople();
+                    updateDropdowns();
+                    triggerAutoSave();
+                }
+            };
 
+            window.removeItem = (i) => { 
+                if(confirm("Confirm: Delete this expense line permanently?")) { 
+                    state.log.splice(i, 1); 
+                    renderLog(); 
+                    triggerAutoSave(); 
+                } 
+            };
+
+            window.removeLogTag = (ri, ti) => { 
+                state.log[ri].tags.splice(ti, 1); 
+                renderLog(); 
+                triggerAutoSave(); 
+            };
+
+            // --- RENDER FUNCTIONS ---
+            function renderPeople() { 
+                UI.peopleList.innerHTML = state.people.map((p, i) => 
+                    `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="removePerson(${i})">❌</button></td></tr>`
+                ).join(''); 
+            }
+
+            function renderLog() {
+                UI.activityList.innerHTML = state.log.map((item, i) => {
+                    if(state.activeFilter && (!item.tags || !item.tags.includes(state.activeFilter))) return "";
+                    const isExp = item.type === 'exp';
+                    const p = (item.tags || []).map((t, ti) => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeLogTag(${i},${ti})">×</span></span>`).join('');
+                    return `<tr style="color:${isExp ? 'inherit' : 'var(--payback-color)'}">
+                        <td class="drag-handle">☰</td><td>${isExp?'EXP':'PAY'}</td><td>${item.payer}</td>
+                        <td>${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
+                        <td><div class="tag-container">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
+                        <td>${item.note || ""}</td><td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
+                    </tr>`;
+                }).join('');
+                syncTagUI();
+            }
+
+            // --- REST OF THE MANIFOLD ---
+            document.getElementById('cloud-save-btn').onclick = triggerAutoSave;
             document.getElementById('cloud-load-btn').onclick = function() {
                 const url = UI.cloudUrl.value.trim(); if(!url) return alert("URL Missing.");
                 UI.cloudStatus.textContent = "Loading...";
@@ -185,15 +233,6 @@
                 document.body.appendChild(script);
             };
 
-            async function fetchFX() {
-                try {
-                    const r = await fetch("https://api.frankfurter.app/latest");
-                    const d = await r.json();
-                    if(d && d.rates) { state.rates = d.rates; state.rates["EUR"] = 1.0; document.getElementById('fx-status').textContent = "FX: Live"; }
-                    updateDropdowns();
-                } catch(e) { updateDropdowns(); }
-            }
-
             function updateDropdowns() {
                 const codes = Object.keys(state.rates).sort();
                 UI.displayCcySelect.innerHTML = ""; codes.forEach(c => UI.displayCcySelect.add(new Option(c, c)));
@@ -207,38 +246,6 @@
                     sel.innerHTML = ""; state.people.forEach(p => sel.add(new Option(p,p)));
                     Array.from(sel.options).forEach(o => { if(cur.includes(o.value)) o.selected = true; });
                 });
-            }
-
-            // --- GLOBAL BACKUP / DELETE ACTIONS ---
-            window.removeItem = (i) => { 
-                if(confirm("Mack, you sure about this? You're about to delete this expense permanently.")) { 
-                    state.log.splice(i, 1); 
-                    renderLog(); 
-                    triggerAutoSave(); 
-                } 
-            };
-            window.removeLogTag = (ri, ti) => { 
-                state.log[ri].tags.splice(ti, 1); 
-                renderLog(); 
-                triggerAutoSave(); 
-            };
-
-            function renderPeople() { UI.peopleList.innerHTML = state.people.map((p, i) => `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="if(confirm('Remove ${p}?')){state.people.splice(${i},1);renderPeople();updateDropdowns();triggerAutoSave();}">❌</button></td></tr>`).join(''); }
-            document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; triggerAutoSave(); }};
-
-            function renderLog() {
-                UI.activityList.innerHTML = state.log.map((item, i) => {
-                    if(state.activeFilter && (!item.tags || !item.tags.includes(state.activeFilter))) return "";
-                    const isExp = item.type === 'exp';
-                    const p = (item.tags || []).map((t, ti) => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeLogTag(${i},${ti})">×</span></span>`).join('');
-                    return `<tr style="color:${isExp ? 'inherit' : 'var(--payback-color)'}">
-                        <td class="drag-handle">☰</td><td>${isExp?'EXP':'PAY'}</td><td>${item.payer}</td>
-                        <td>${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
-                        <td><div class="tag-container">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
-                        <td>${item.note || ""}</td><td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
-                    </tr>`;
-                }).join('');
-                syncTagUI();
             }
 
             window.handleAutoTag = (e, sc, idx) => { if(state.tagMasterList.has(e.target.value.trim())) { commitTag(e.target.value.trim(), sc, idx); e.target.value = ''; }};
@@ -262,15 +269,15 @@
                 UI.logFilterTag.value = curr;
             }
 
+            document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; triggerAutoSave(); }};
             document.getElementById('add-expense-btn').onclick = () => {
                 const a = parseFloat(document.getElementById('qa-amount').value); const p = Array.from(UI.qaParts.selectedOptions).map(o => o.value);
                 const l = UI.qaTagInput.value.trim(); if(l) { currentQaTags.push(l); }
                 if(a>0 && p.length>0) { state.log.push({type:'exp', payer:document.getElementById('qa-payer').value, amount:a, currency:document.getElementById('qa-ccy').value, participants:p, tags:[...currentQaTags], note:document.getElementById('qa-note').value}); currentQaTags=[]; renderInputTags(); renderLog(); document.getElementById('qa-amount').value=''; document.getElementById('qa-note').value=''; triggerAutoSave(); }
             };
-
             document.getElementById('add-payback-btn').onclick = () => {
                 const a = parseFloat(document.getElementById('pb-amount').value); const f = document.getElementById('pb-from').value; const t = document.getElementById('pb-to').value;
-                if(a>0 && f!==t) { state.log.push({type:'pay', payer:f, to:t, amount:a, tags:[], note:'Cash Payback'}); renderLog(); document.getElementById('pb-amount').value=''; triggerAutoSave(); }
+                if(a>0 && f!==t) { state.log.push({type:'pay', payer:f, to:t, amount:a, tags:[], note:'Payback'}); renderLog(); document.getElementById('pb-amount').value=''; triggerAutoSave(); }
             };
 
             document.getElementById('calculate-btn').onclick = () => {
@@ -309,7 +316,7 @@
                 handle: '.drag-handle', animation: 150, 
                 onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); triggerAutoSave(); }
             });
-            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local session? This wipes your cached settings.")) { localStorage.clear(); location.reload(); } };
+            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local cache and settings?")) { localStorage.clear(); location.reload(); } };
         });
     </script>
 </body>
