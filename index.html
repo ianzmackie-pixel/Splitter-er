@@ -29,6 +29,7 @@
         th, td { border: 1px solid var(--border-color); padding: 5px; text-align: left; }
         th { background-color: #f9f9f9; }
         .drag-handle { cursor: grab; color: #ccc; padding-right: 5px; font-size: 1.2em; display: inline-block; }
+        .editable-amt { color: var(--accent-color); font-weight: bold; text-decoration: underline dotted; cursor: pointer; }
         .tag-pill { background: #e0e0e0; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; display: flex; align-items: center; gap: 3px; color: #333; margin: 1px 0; white-space: nowrap; }
         .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; line-height: 1; }
         .tag-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; min-height: 44px; padding: 4px; box-sizing: border-box; background: #fff; border: 1px solid var(--border-color); border-radius: 6px; }
@@ -185,6 +186,7 @@
                 } catch(e) { }
             }
 
+            // --- GLOBAL ACTIONS ---
             window.removePerson = (i) => {
                 if(confirm(`Remove ${state.people[i]}?`)) {
                     state.people.splice(i, 1); renderPeople(); updateDropdowns(); triggerAutoSave();
@@ -206,6 +208,17 @@
                 renderInputTags();
             };
 
+            // NEW: EDIT AMOUNT IN TABLE
+            window.editAmount = (i) => {
+                const oldAmt = state.log[i].amount;
+                const newAmt = prompt(`Adjust amount for ${state.log[i].note || 'this item'}:`, oldAmt);
+                if (newAmt !== null && !isNaN(newAmt) && newAmt.trim() !== "") {
+                    state.log[i].amount = parseFloat(newAmt);
+                    renderLog();
+                    triggerAutoSave();
+                }
+            };
+
             function renderPeople() { 
                 UI.peopleList.innerHTML = state.people.map((p, i) => 
                     `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="removePerson(${i})">❌</button></td></tr>`
@@ -224,7 +237,7 @@
                         <td>${isExp?'EXP':'PAY'}</td>
                         <td>${item.payer}</td>
                         <td>${splitWith}</td>
-                        <td>${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
+                        <td class="editable-amt" onclick="editAmount(${i})">${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
                         <td><div class="tag-container" style="border:none; min-height:auto; padding:0; background:transparent;">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
                         <td>${item.note || ""}</td>
                         <td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
