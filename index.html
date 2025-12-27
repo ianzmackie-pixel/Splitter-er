@@ -3,18 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💸 Trip Splitter-er</title>
+    <title>💸 Trip Splitter</title>
     <style>
         :root {
             --bg-color: #f0f2f6; --widget-bg: #ffffff; --text-color: #31333f; --border-color: #e0e0e0;
             --primary-color: #ff4b4b; --secondary-color: #f0f2f6; --accent-color: #008080; --payback-color: #2e7d32;
         }
         body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); padding: 12px; line-height: 1.4; }
-        h1, h2, h3 { margin-top: 15px; margin-bottom: 10px; }
-        .container { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        h1, h2, h3 { margin-top: 10px; margin-bottom: 8px; }
+        .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media (max-width: 900px) { 
+            .container { grid-template-columns: 1fr; }
+            .column.sidebar { order: 2; } /* Moves sidebar below main actions on mobile */
+            .column.main { order: 1; }
+        }
         .column { background: var(--widget-bg); border-radius: 8px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        label { display: block; font-weight: 600; margin-bottom: 5px; margin-top: 10px; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; margin-top: 10px; font-size: 0.9em; }
         input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         button.primary { background: var(--primary-color); color: white; }
@@ -25,10 +29,10 @@
         th, td { border: 1px solid var(--border-color); padding: 6px; text-align: left; }
         th { background-color: #f9f9f9; }
         .drag-handle { cursor: grab; color: #ccc; padding-right: 5px; font-size: 1.2em; display: inline-block; }
-        .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; margin: 2px 0; }
+        .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; margin: 2px 0; white-space: nowrap; }
         .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 120px; }
-        .inline-tag-input { border: none !important; background: transparent !important; width: 60px !important; outline: none; padding: 2px !important; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 140px; padding: 2px; }
+        .inline-tag-input { border: none !important; background: transparent !important; flex-grow: 1; min-width: 80px !important; outline: none; padding: 4px !important; margin: 0 !important; }
         .delete-btn { background: none; color: var(--primary-color); font-size: 1.1em; width: auto; margin: 0; padding: 0; }
         .summary-box { background: #f1f8e9; border: 2px solid var(--payback-color); padding: 16px; margin-top: 16px; border-radius: 6px; }
         .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; text-align: center; }
@@ -41,35 +45,9 @@
 
     <datalist id="tag-suggestions"></datalist>
 
-    <h1>💸 Trip Splitter-er</h1>
-
     <div class="container">
-        <div class="column">
-            <h2>Cloud Sync</h2>
-            <input type="text" id="cloud-url" placeholder="Apps Script URL">
-            <div style="display: flex; gap: 8px;">
-                <button id="cloud-load-btn" class="cloud">☁️ Force Load</button>
-                <button id="cloud-save-btn" class="secondary" style="font-size: 0.8em;">Manual Save</button>
-            </div>
-            <small id="cloud-status" style="color: #666; font-weight: bold; display: block; text-align: center; margin-top: 5px;"></small>
-
-            <hr>
-            <h2>People</h2>
-            <div style="display: flex; gap: 5px;">
-                <input type="text" id="person-name" placeholder="Name">
-                <button id="add-person-btn" class="secondary" style="margin:0; width: auto;">+</button>
-            </div>
-            <table><tbody id="people-list"></tbody></table>
-
-            <hr>
-            <label>Settlement Currency</label>
-            <select id="display-ccy"></select>
-            <small id="fx-status">Connecting FX...</small>
-            <button id="reset-btn" class="secondary" style="color: var(--primary-color); font-size: 0.7em;">🔄 Hard Reset</button>
-        </div>
-
-        <div class="column">
-            <h2 style="color: var(--primary-color);">1. Add Expense</h2>
+        <div class="column main">
+            <h2 style="color: var(--primary-color); margin-top:0;">1. Add Shared Expense</h2>
             <div class="quick-add-grid">
                 <div><label>Payer</label><select id="qa-payer"></select></div>
                 <div><label>Amt</label><input type="number" id="qa-amount" step="1" placeholder="0"></div>
@@ -84,16 +62,17 @@
                         <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Tag" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
                     </div>
                 </div>
-                <div class="full-span"><input type="text" id="qa-note" placeholder="What was it?"></div>
+                <div class="full-span"><input type="text" id="qa-note" placeholder="What was it? (e.g. Lunch)"></div>
             </div>
             <button id="add-expense-btn" class="primary">Add & Auto-Save</button>
 
-            <hr>
-            <h2 style="color: var(--payback-color);">2. Cash Payback</h2>
+            <hr style="margin: 20px 0;">
+
+            <h2 style="color: var(--payback-color);">2. Record Payback</h2>
             <div class="quick-add-grid">
                 <div><label>From</label><select id="pb-from"></select></div>
                 <div><label>To</label><select id="pb-to"></select></div>
-                <div><label>Amount</label><input type="number" id="pb-amount" step="1"></div>
+                <div><label>Amt</label><input type="number" id="pb-amount" step="1"></div>
             </div>
             <button id="add-payback-btn" class="payback-btn">Record & Auto-Save</button>
 
@@ -119,10 +98,35 @@
                 <pre id="tx-code" style="font-size: 0.9em;"></pre>
             </div>
         </div>
+
+        <div class="column sidebar">
+            <h2>People</h2>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="person-name" placeholder="Name">
+                <button id="add-person-btn" class="secondary" style="margin:0; width: auto;">+</button>
+            </div>
+            <table><tbody id="people-list"></tbody></table>
+
+            <hr>
+            <h2>Settings</h2>
+            <label>Settlement Currency</label>
+            <select id="display-ccy"></select>
+            <small id="fx-status">Connecting FX...</small>
+            
+            <hr>
+            <h2>Cloud Sync</h2>
+            <input type="text" id="cloud-url" placeholder="Apps Script URL">
+            <div style="display: flex; gap: 8px;">
+                <button id="cloud-load-btn" class="cloud">☁️ Force Load</button>
+                <button id="cloud-save-btn" class="secondary" style="font-size: 0.8em;">Manual Save</button>
+            </div>
+            <small id="cloud-status" style="color: #666; font-weight: bold; display: block; text-align: center; margin-top: 5px;"></small>
+
+            <button id="reset-btn" class="secondary" style="color: var(--primary-color); font-size: 0.7em; margin-top: 20px;">🔄 Hard Reset Session</button>
+        </div>
     </div>
 
     <script>
-        // --- PASTE YOUR URL HERE BEFORE UPLOADING ---
         const MASTER_PIPE_URL = "https://script.google.com/macros/s/AKfycbw2XEmPawAoyPdkT5Ys5yL0bCZdpDPjCmbERZGqJ9dLH4ELuUUQZtMLl3EiA4awR0Ur/exec"; 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -140,17 +144,14 @@
                 txCode: document.getElementById('tx-code')
             };
 
-            // INITIALIZE URL FROM MASTER OR LOCALSTORAGE
             const savedUrl = localStorage.getItem('splitter_cloud_url') || MASTER_PIPE_URL;
             if(savedUrl) {
                 UI.cloudUrl.value = savedUrl;
-                // AUTO-LOAD ON STARTUP
                 setTimeout(() => { document.getElementById('cloud-load-btn').click(); }, 500);
             }
 
-            // --- AUTO-SAVE LOGIC ---
             async function triggerAutoSave() {
-                const url = UI.cloudUrl.value.trim(); if(!url) return;
+                const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return;
                 UI.cloudStatus.textContent = "Auto-Saving...";
                 const data = JSON.stringify({ people: state.people, log: state.log, settings: { displayCcy: state.displayCcy } });
                 try {
@@ -159,7 +160,7 @@
                     UI.syncStamp.textContent = "Last Auto-Saved: " + now;
                     UI.cloudStatus.textContent = "";
                     localStorage.setItem('splitter_last_sync', now);
-                    localStorage.setItem('splitter_cloud_url', url); // Keep memory fresh
+                    localStorage.setItem('splitter_cloud_url', url);
                 } catch(e) { UI.cloudStatus.textContent = "Auto-Save Failed."; }
             }
 
@@ -184,9 +185,6 @@
                 document.body.appendChild(script);
             };
 
-            if(localStorage.getItem('splitter_last_sync')) UI.syncStamp.textContent = "Last Activity: " + localStorage.getItem('splitter_last_sync');
-
-            // --- FX & DROPDOWNS ---
             async function fetchFX() {
                 try {
                     const r = await fetch("https://api.frankfurter.app/latest");
@@ -211,11 +209,21 @@
                 });
             }
 
-            // --- GLOBAL FUNCTIONS ---
-            window.removeItem = (i) => { if(confirm("Delete this line?")) { state.log.splice(i, 1); renderLog(); triggerAutoSave(); } };
-            window.removeLogTag = (ri, ti) => { state.log[ri].tags.splice(ti, 1); renderLog(); triggerAutoSave(); };
+            // --- GLOBAL BACKUP / DELETE ACTIONS ---
+            window.removeItem = (i) => { 
+                if(confirm("Mack, you sure about this? You're about to delete this expense permanently.")) { 
+                    state.log.splice(i, 1); 
+                    renderLog(); 
+                    triggerAutoSave(); 
+                } 
+            };
+            window.removeLogTag = (ri, ti) => { 
+                state.log[ri].tags.splice(ti, 1); 
+                renderLog(); 
+                triggerAutoSave(); 
+            };
 
-            function renderPeople() { UI.peopleList.innerHTML = state.people.map((p, i) => `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="state.people.splice(${i},1);renderPeople();updateDropdowns();">❌</button></td></tr>`).join(''); }
+            function renderPeople() { UI.peopleList.innerHTML = state.people.map((p, i) => `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="if(confirm('Remove ${p}?')){state.people.splice(${i},1);renderPeople();updateDropdowns();triggerAutoSave();}">❌</button></td></tr>`).join(''); }
             document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; triggerAutoSave(); }};
 
             function renderLog() {
@@ -289,12 +297,19 @@
                 return tx;
             }
 
+            document.getElementById('export-csv-btn').onclick = () => {
+                const h = ["Type","From","SplitTo","Amt","CCY","Tags","Note"];
+                const csv = [h, ...state.log.map(i => [i.type, i.payer, i.participants?i.participants.join('|'):i.to, i.amount, i.currency||state.displayCcy, (i.tags||[]).join('|'), i.note])].map(e => e.join(",")).join("\n");
+                const b = new Blob([csv], {type: 'text/csv'}); const url = URL.createObjectURL(b);
+                const a = document.createElement("a"); a.href = url; a.download = "expenses.csv"; a.click();
+            };
+
             fetchFX();
             new Sortable(UI.activityList, { 
                 handle: '.drag-handle', animation: 150, 
                 onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); triggerAutoSave(); }
             });
-            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local?")) { localStorage.clear(); location.reload(); } };
+            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local session? This wipes your cached settings.")) { localStorage.clear(); location.reload(); } };
         });
     </script>
 </body>
