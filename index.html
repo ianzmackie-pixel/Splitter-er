@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💸 Trip Splitter</title>
+    <title>💸 Trip Splitter-er</title>
     <style>
         :root {
             --bg-color: #f0f2f6; --widget-bg: #ffffff; --text-color: #31333f; --border-color: #e0e0e0;
@@ -46,9 +46,9 @@
     <div class="container">
         <div class="column">
             <h2>Cloud Sync</h2>
-            <input type="text" id="cloud-url" value="PASTE_YOUR_FULL_APPS_SCRIPT_URL_HERE">
+            <input type="text" id="cloud-url" placeholder="Apps Script URL">
             <div style="display: flex; gap: 8px;">
-                <button id="cloud-load-btn" class="cloud">☁️ Load Latest</button>
+                <button id="cloud-load-btn" class="cloud">☁️ Force Load</button>
                 <button id="cloud-save-btn" class="secondary" style="font-size: 0.8em;">Manual Save</button>
             </div>
             <small id="cloud-status" style="color: #666; font-weight: bold; display: block; text-align: center; margin-top: 5px;"></small>
@@ -122,6 +122,9 @@
     </div>
 
     <script>
+        // --- PASTE YOUR URL HERE BEFORE UPLOADING ---
+        const MASTER_PIPE_URL = "https://script.google.com/macros/s/AKfycbw2XEmPawAoyPdkT5Ys5yL0bCZdpDPjCmbERZGqJ9dLH4ELuUUQZtMLl3EiA4awR0Ur/exec"; 
+
         document.addEventListener('DOMContentLoaded', () => {
             let state = { people: [], log: [], tagMasterList: new Set(), rates: { "NZD": 1.0, "THB": 21.0 }, displayCcy: "NZD", activeFilter: "" };
             let currentQaTags = [];
@@ -137,9 +140,17 @@
                 txCode: document.getElementById('tx-code')
             };
 
+            // INITIALIZE URL FROM MASTER OR LOCALSTORAGE
+            const savedUrl = localStorage.getItem('splitter_cloud_url') || MASTER_PIPE_URL;
+            if(savedUrl) {
+                UI.cloudUrl.value = savedUrl;
+                // AUTO-LOAD ON STARTUP
+                setTimeout(() => { document.getElementById('cloud-load-btn').click(); }, 500);
+            }
+
             // --- AUTO-SAVE LOGIC ---
             async function triggerAutoSave() {
-                const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return;
+                const url = UI.cloudUrl.value.trim(); if(!url) return;
                 UI.cloudStatus.textContent = "Auto-Saving...";
                 const data = JSON.stringify({ people: state.people, log: state.log, settings: { displayCcy: state.displayCcy } });
                 try {
@@ -148,14 +159,14 @@
                     UI.syncStamp.textContent = "Last Auto-Saved: " + now;
                     UI.cloudStatus.textContent = "";
                     localStorage.setItem('splitter_last_sync', now);
+                    localStorage.setItem('splitter_cloud_url', url); // Keep memory fresh
                 } catch(e) { UI.cloudStatus.textContent = "Auto-Save Failed."; }
             }
 
-            // --- CLOUD SYNC ---
             document.getElementById('cloud-save-btn').onclick = triggerAutoSave;
 
             document.getElementById('cloud-load-btn').onclick = function() {
-                const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return alert("URL Missing.");
+                const url = UI.cloudUrl.value.trim(); if(!url) return alert("URL Missing.");
                 UI.cloudStatus.textContent = "Loading...";
                 const callbackName = 'cloudCallback_' + Date.now();
                 window[callbackName] = (data) => {
@@ -165,6 +176,7 @@
                     UI.cloudStatus.textContent = "Loaded.";
                     const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit'});
                     UI.syncStamp.textContent = "Last Loaded: " + now;
+                    localStorage.setItem('splitter_cloud_url', url);
                     document.body.removeChild(script); delete window[callbackName];
                 };
                 const script = document.createElement('script');
@@ -282,7 +294,7 @@
                 handle: '.drag-handle', animation: 150, 
                 onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); triggerAutoSave(); }
             });
-            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local?")) location.reload(); };
+            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local?")) { localStorage.clear(); location.reload(); } };
         });
     </script>
 </body>
