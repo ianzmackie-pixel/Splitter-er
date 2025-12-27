@@ -25,14 +25,14 @@
         button.payback-btn { background: var(--payback-color); color: white; }
         button.secondary { background: var(--secondary-color); border: 1px solid var(--border-color); }
         button.cloud { background: var(--accent-color); color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8em; }
-        th, td { border: 1px solid var(--border-color); padding: 6px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75em; }
+        th, td { border: 1px solid var(--border-color); padding: 5px; text-align: left; }
         th { background-color: #f9f9f9; }
         .drag-handle { cursor: grab; color: #ccc; padding-right: 5px; font-size: 1.2em; display: inline-block; }
-        .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; margin: 2px 0; white-space: nowrap; }
-        .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; min-height: 40px; padding: 4px; box-sizing: border-box; }
-        .inline-tag-input { border: none !important; background: transparent !important; flex: 1; min-width: 100px !important; outline: none; padding: 4px !important; margin: 0 !important; }
+        .tag-pill { background: #e0e0e0; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; display: flex; align-items: center; gap: 3px; color: #333; margin: 1px 0; white-space: nowrap; }
+        .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; line-height: 1; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; min-height: 44px; padding: 4px; box-sizing: border-box; background: #fff; border: 1px solid var(--border-color); border-radius: 6px; }
+        .inline-tag-input { border: none !important; background: transparent !important; flex: 1; min-width: 100px !important; outline: none; padding: 4px !important; margin: 0 !important; font-size: 16px; }
         .delete-btn { background: none; color: var(--primary-color); font-size: 1.1em; width: auto; margin: 0; padding: 0; }
         .summary-box { background: #f1f8e9; border: 2px solid var(--payback-color); padding: 16px; margin-top: 16px; border-radius: 6px; }
         .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; text-align: center; }
@@ -58,11 +58,11 @@
                 </div>
                 <div class="full-span">
                     <label>Tags</label>
-                    <div class="tag-container" id="qa-tag-area" style="border: 1px solid var(--border-color); padding: 5px; background: #fff; border-radius: 6px;">
+                    <div class="tag-container" id="qa-tag-area">
                         <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Tag (Enter/Comma)" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
                     </div>
                 </div>
-                <div class="full-span"><input type="text" id="qa-note" placeholder="Note (Hotel, Dinner, etc.)"></div>
+                <div class="full-span"><input type="text" id="qa-note" placeholder="Note (e.g. Lunch)"></div>
             </div>
             <button id="add-expense-btn" class="primary">Add & Auto-Save</button>
 
@@ -84,7 +84,7 @@
 
             <div style="overflow-x: auto;">
                 <table id="activity-table">
-                    <thead><tr><th></th><th>Type</th><th>From</th><th>Amt</th><th>Tags</th><th>Note</th><th></th></tr></thead>
+                    <thead><tr><th></th><th>Type</th><th>From</th><th>With</th><th>Amt</th><th>Tags</th><th>Note</th><th></th></tr></thead>
                     <tbody id="activity-list"></tbody>
                 </table>
             </div>
@@ -111,7 +111,7 @@
             <h2>Settings</h2>
             <label>Settlement Currency</label>
             <select id="display-ccy"></select>
-            <small id="fx-status">Connecting FX...</small>
+            <small id="fx-status" style="font-weight: bold; color: var(--accent-color);">Connecting FX...</small>
             
             <hr>
             <h2>Cloud Sync</h2>
@@ -121,17 +121,22 @@
                 <button id="cloud-save-btn" class="secondary" style="font-size: 0.8em;">Manual Save</button>
             </div>
             <small id="cloud-status" style="color: #666; font-weight: bold; display: block; text-align: center; margin-top: 5px;"></small>
-
             <button id="reset-btn" class="secondary" style="color: var(--primary-color); font-size: 0.7em; margin-top: 20px;">🔄 Hard Reset Session</button>
         </div>
     </div>
 
     <script>
-        // --- PASTE YOUR URL HERE ---
         const MASTER_PIPE_URL = "https://script.google.com/macros/s/AKfycbw2XEmPawAoyPdkT5Ys5yL0bCZdpDPjCmbERZGqJ9dLH4ELuUUQZtMLl3EiA4awR0Ur/exec"; 
 
         document.addEventListener('DOMContentLoaded', () => {
-            let state = { people: [], log: [], tagMasterList: new Set(), rates: { "NZD": 1.0, "THB": 21.0 }, displayCcy: "NZD", activeFilter: "" };
+            let state = { 
+                people: [], 
+                log: [], 
+                tagMasterList: new Set(), 
+                rates: { "NZD": 1.0, "THB": 21.0, "IDR": 9500.0, "USD": 0.6, "EUR": 0.55, "AUD": 0.93 }, 
+                displayCcy: "NZD", 
+                activeFilter: "" 
+            };
             let currentQaTags = [];
 
             const UI = {
@@ -142,7 +147,7 @@
                 qaParts: document.getElementById('qa-parts'), qaTagArea: document.getElementById('qa-tag-area'),
                 qaTagInput: document.getElementById('qa-tag-input'), balancesList: document.getElementById('balances-list'),
                 summaryOutput: document.getElementById('summary-output'), totalNote: document.getElementById('total-note'),
-                txCode: document.getElementById('tx-code')
+                txCode: document.getElementById('tx-code'), fxStatus: document.getElementById('fx-status')
             };
 
             const savedUrl = localStorage.getItem('splitter_cloud_url') || MASTER_PIPE_URL;
@@ -151,46 +156,56 @@
                 setTimeout(() => { document.getElementById('cloud-load-btn').click(); }, 500);
             }
 
+            async function fetchFX() {
+                try {
+                    const r = await fetch("https://open.er-api.com/v6/latest/NZD");
+                    if (!r.ok) throw new Error();
+                    const d = await r.json();
+                    if(d && d.rates) {
+                        state.rates = d.rates;
+                        UI.fxStatus.textContent = "FX: Live (Market)";
+                        UI.fxStatus.style.color = "var(--payback-color)";
+                    }
+                } catch(e) {
+                    UI.fxStatus.textContent = "FX: Fallback Mode";
+                    UI.fxStatus.style.color = "var(--primary-color)";
+                }
+                updateDropdowns();
+            }
+
             async function triggerAutoSave() {
                 const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return;
-                UI.cloudStatus.textContent = "Auto-Saving...";
                 const data = JSON.stringify({ people: state.people, log: state.log, settings: { displayCcy: state.displayCcy } });
                 try {
                     await fetch(url, { method: 'POST', mode: 'no-cors', body: data });
                     const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit'});
                     UI.syncStamp.textContent = "Last Auto-Saved: " + now;
-                    UI.cloudStatus.textContent = "";
                     localStorage.setItem('splitter_last_sync', now);
                     localStorage.setItem('splitter_cloud_url', url);
-                } catch(e) { UI.cloudStatus.textContent = "Auto-Save Failed."; }
+                } catch(e) { }
             }
 
-            // --- GLOBAL ACTIONS (FIXED THE SCOPE PROBLEM HERE) ---
             window.removePerson = (i) => {
-                const name = state.people[i];
-                if(confirm(`Mack, you sure? Removing ${name} will mess with the split calculation if they're already in the log.`)) {
-                    state.people.splice(i, 1);
-                    renderPeople();
-                    updateDropdowns();
-                    triggerAutoSave();
+                if(confirm(`Remove ${state.people[i]}?`)) {
+                    state.people.splice(i, 1); renderPeople(); updateDropdowns(); triggerAutoSave();
                 }
             };
 
             window.removeItem = (i) => { 
-                if(confirm("Confirm: Delete this expense line permanently?")) { 
-                    state.log.splice(i, 1); 
-                    renderLog(); 
-                    triggerAutoSave(); 
+                if(confirm("Delete expense permanently?")) { 
+                    state.log.splice(i, 1); renderLog(); triggerAutoSave(); 
                 } 
             };
 
             window.removeLogTag = (ri, ti) => { 
-                state.log[ri].tags.splice(ti, 1); 
-                renderLog(); 
-                triggerAutoSave(); 
+                state.log[ri].tags.splice(ti, 1); renderLog(); triggerAutoSave(); 
             };
 
-            // --- RENDER FUNCTIONS ---
+            window.removeInputTag = (i) => {
+                currentQaTags.splice(i, 1);
+                renderInputTags();
+            };
+
             function renderPeople() { 
                 UI.peopleList.innerHTML = state.people.map((p, i) => 
                     `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="removePerson(${i})">❌</button></td></tr>`
@@ -201,28 +216,30 @@
                 UI.activityList.innerHTML = state.log.map((item, i) => {
                     if(state.activeFilter && (!item.tags || !item.tags.includes(state.activeFilter))) return "";
                     const isExp = item.type === 'exp';
+                    const splitWith = isExp ? (item.participants || []).join(', ') : (item.to || "");
                     const p = (item.tags || []).map((t, ti) => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeLogTag(${i},${ti})">×</span></span>`).join('');
+                    
                     return `<tr style="color:${isExp ? 'inherit' : 'var(--payback-color)'}">
-                        <td class="drag-handle">☰</td><td>${isExp?'EXP':'PAY'}</td><td>${item.payer}</td>
+                        <td class="drag-handle">☰</td>
+                        <td>${isExp?'EXP':'PAY'}</td>
+                        <td>${item.payer}</td>
+                        <td>${splitWith}</td>
                         <td>${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
-                        <td><div class="tag-container">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
-                        <td>${item.note || ""}</td><td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
+                        <td><div class="tag-container" style="border:none; min-height:auto; padding:0; background:transparent;">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
+                        <td>${item.note || ""}</td>
+                        <td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
                     </tr>`;
                 }).join('');
                 syncTagUI();
             }
 
-            // --- REST OF THE MANIFOLD ---
-            document.getElementById('cloud-save-btn').onclick = triggerAutoSave;
             document.getElementById('cloud-load-btn').onclick = function() {
-                const url = UI.cloudUrl.value.trim(); if(!url) return alert("URL Missing.");
-                UI.cloudStatus.textContent = "Loading...";
+                const url = UI.cloudUrl.value.trim(); if(!url) return;
                 const callbackName = 'cloudCallback_' + Date.now();
                 window[callbackName] = (data) => {
                     state.people = data.people || []; state.log = data.log || [];
                     if(data.settings) state.displayCcy = data.settings.displayCcy || "NZD";
                     renderPeople(); renderLog(); updateDropdowns(); syncTagUI();
-                    UI.cloudStatus.textContent = "Loaded.";
                     const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit'});
                     UI.syncStamp.textContent = "Last Loaded: " + now;
                     localStorage.setItem('splitter_cloud_url', url);
@@ -258,7 +275,11 @@
             }
             function renderInputTags() {
                 const input = UI.qaTagInput; UI.qaTagArea.innerHTML = '';
-                currentQaTags.forEach((t, i) => { const p = document.createElement('span'); p.className='tag-pill'; p.innerHTML=`${t} <span class="tag-remove" onclick="currentQaTags.splice(${i},1);renderInputTags();">×</span>`; UI.qaTagArea.appendChild(p); });
+                currentQaTags.forEach((t, i) => { 
+                    const p = document.createElement('span'); p.className='tag-pill'; 
+                    p.innerHTML=`${t} <span class="tag-remove" onclick="removeInputTag(${i})">×</span>`; 
+                    UI.qaTagArea.appendChild(p); 
+                });
                 UI.qaTagArea.appendChild(input); input.focus();
             }
             function syncTagUI() {
@@ -283,12 +304,14 @@
             document.getElementById('calculate-btn').onclick = () => {
                 let net = {}; state.people.forEach(p => net[p] = 0); let spent = 0;
                 state.log.forEach(item => {
-                    const base = state.rates[state.displayCcy] || 1; const conv = base / (state.rates[item.currency] || base);
+                    const base = state.rates[state.displayCcy] || 1; 
+                    const itemCcy = item.currency || state.displayCcy;
+                    const conv = base / (state.rates[itemCcy] || 1);
                     const a = Number(item.amount) * conv;
                     if(item.type==='exp') { spent += a; net[item.payer] += a; let s = a/item.participants.length; item.participants.forEach(p => { if(net.hasOwnProperty(p)) net[p] -= s; }); }
                     else { net[item.payer] += a; net[item.to] -= a; }
                 });
-                UI.summaryOutput.style.display = 'block'; UI.totalNote.textContent = `Trip Total: NZD ${spent.toFixed(0)}`;
+                UI.summaryOutput.style.display = 'block'; UI.totalNote.textContent = `Total Spend: NZD ${spent.toFixed(0)}`;
                 UI.balancesList.innerHTML = state.people.map(p => `<tr><td>${p}</td><td>${net[p] > 0.01 ? 'Owed' : (net[p] < -0.01 ? 'Owes' : 'Square')} ${Math.abs(net[p]).toFixed(2)}</td></tr>`).join('');
                 UI.txCode.textContent = settle(state.people, state.people.map(p => net[p])).map(t => `${t.from} pays ${t.to}: $${t.amount.toFixed(2)}`).join('\n');
             };
@@ -304,19 +327,18 @@
                 return tx;
             }
 
-            document.getElementById('export-csv-btn').onclick = () => {
-                const h = ["Type","From","SplitTo","Amt","CCY","Tags","Note"];
-                const csv = [h, ...state.log.map(i => [i.type, i.payer, i.participants?i.participants.join('|'):i.to, i.amount, i.currency||state.displayCcy, (i.tags||[]).join('|'), i.note])].map(e => e.join(",")).join("\n");
-                const b = new Blob([csv], {type: 'text/csv'}); const url = URL.createObjectURL(b);
-                const a = document.createElement("a"); a.href = url; a.download = "expenses.csv"; a.click();
-            };
-
             fetchFX();
             new Sortable(UI.activityList, { 
-                handle: '.drag-handle', animation: 150, 
-                onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); triggerAutoSave(); }
+                handle: '.drag-handle', 
+                animation: 150, 
+                onEnd: (evt) => {
+                    const item = state.log.splice(evt.oldIndex, 1)[0];
+                    state.log.splice(evt.newIndex, 0, item);
+                    renderLog();
+                    triggerAutoSave();
+                }
             });
-            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local cache and settings?")) { localStorage.clear(); location.reload(); } };
+            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local cache?")) { localStorage.clear(); location.reload(); } };
         });
     </script>
 </body>
