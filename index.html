@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💸 Trip Splitter (Synced & Stamped)</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f6; --widget-bg: #ffffff; --text-color: #31333f; --border-color: #e0e0e0;
+            --primary-color: #ff4b4b; --secondary-color: #f0f2f6; --accent-color: #008080; --payback-color: #2e7d32;
+        }
+        body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); padding: 24px; line-height: 1.4; }
+        h1, h2, h3 { margin-top: 15px; margin-bottom: 10px; }
+        .container { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        .column { background: var(--widget-bg); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        label { display: block; font-weight: 600; margin-bottom: 5px; margin-top: 10px; }
+        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); box-sizing: border-box; }
+        button { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        button.primary { background: var(--primary-color); color: white; }
+        button.payback-btn { background: var(--payback-color); color: white; }
+        button.secondary { background: var(--secondary-color); border: 1px solid var(--border-color); }
+        button.cloud { background: var(--accent-color); color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
+        th { background-color: #f9f9f9; }
+        .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; }
+        .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 150px; }
+        .inline-tag-input { border: none !important; background: transparent !important; width: 80px !important; outline: none; padding: 2px !important; }
+        .delete-btn { background: none; color: var(--primary-color); font-size: 1.1em; width: auto; margin: 0; padding: 0; }
+        .summary-box { background: #f1f8e9; border: 2px solid var(--payback-color); padding: 16px; margin-top: 16px; border-radius: 6px; }
+        pre { background: #333; color: #fff; padding: 15px; white-space: pre-wrap; font-family: monospace; border-radius: 4px; overflow-x: auto; }
+        .quick-add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .full-span { grid-column: 1 / -1; }
+        .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+
+    <datalist id="tag-suggestions"></datalist>
+
+    <h1>💸 Trip Splitter (Live Sync Rig)</h1>
+
+    <div class="container">
+        <div class="column">
+            <h2>Cloud Sync</h2>
+            <label>Apps Script Web App URL</label>
+            <input type="text" id="cloud-url" placeholder="Paste URL here">
+            <div style="display: flex; gap: 10px;">
+                <button id="cloud-load-btn" class="cloud">☁️ Load</button>
+                <button id="cloud-save-btn" class="cloud">☁️ Save</button>
+            </div>
+            <span id="sync-stamp" class="sync-stamp">Last Synced: Never</span>
+            <small id="cloud-status" style="color: #666; font-weight: bold;"></small>
+
+            <hr>
+            <h2>People</h2>
+            <input type="text" id="person-name" placeholder="Name">
+            <button id="add-person-btn" class="secondary">Add Person</button>
+            <table id="people-table"><tbody id="people-list"></tbody></table>
+
+            <hr>
+            <h2>Settlement</h2>
+            <label>Currency</label>
+            <select id="display-ccy"></select>
+            <small id="fx-status">Connecting FX...</small>
+
+            <hr>
+            <button id="reset-btn" class="secondary" style="color: var(--primary-color);">🔄 Reset Session</button>
+        </div>
+
+        <div class="column">
+            <h2 style="color: var(--primary-color);">1. Add Expense</h2>
+            <div class="quick-add-grid">
+                <div><label>Payer</label><select id="qa-payer"></select></div>
+                <div><label>Amount</label><input type="number" id="qa-amount" step="0.50"></div>
+                <div><label>CCY</label><select id="qa-ccy"></select></div>
+                <div class="full-span">
+                    <label>Participants</label>
+                    <select id="qa-parts" multiple style="height: 80px;"></select>
+                </div>
+                <div class="full-span">
+                    <label>Tags</label>
+                    <div class="tag-container" id="qa-tag-area" style="border: 1px solid var(--border-color); padding: 5px; background: #fff; border-radius: 6px;">
+                        <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Add tag" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
+                    </div>
+                </div>
+                <div class="full-span"><input type="text" id="qa-note" placeholder="Note (Hotel, Dinner, etc.)"></div>
+            </div>
+            <button id="add-expense-btn" class="primary">Add Shared Expense</button>
+
+            <hr>
+            <div style="display:flex; align-items:center; gap:10px; background:#f8f9fa; padding:10px; border-radius:6px; margin-bottom:10px;">
+                <select id="log-filter-tag" style="max-width:140px; margin:0;"><option value="">All Tags</option></select>
+                <span id="filter-stats" style="font-weight:bold; flex-grow:1;"></span>
+                <button id="export-csv-btn" class="secondary" style="width:auto; margin:0; padding: 5px 15px;">CSV</button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead><tr><th>Type</th><th>From</th><th>To/Split</th><th>Amt</th><th>Tags</th><th>Note</th><th>Action</th></tr></thead>
+                    <tbody id="activity-list"></tbody>
+                </table>
+            </div>
+
+            <button id="calculate-btn" class="primary" style="font-size: 1.3em; height: 60px; margin-top: 20px;">CALCULATE SETTLEMENT</button>
+            
+            <div id="summary-output" class="summary-box" style="display: none;">
+                <div id="total-note" style="margin-bottom:10px; font-weight:bold;"></div>
+                <table style="background:white; margin-bottom:10px; width: 100%;"><tbody id="balances-list"></tbody></table>
+                <pre id="tx-code"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let state = { people: [], log: [], tagMasterList: new Set(), rates: { "NZD": 1.0, "THB": 21.0, "EUR": 0.58 }, displayCcy: "NZD", activeFilter: "" };
+            let currentQaTags = [];
+
+            const UI = {
+                cloudUrl: document.getElementById('cloud-url'), cloudStatus: document.getElementById('cloud-status'),
+                syncStamp: document.getElementById('sync-stamp'), displayCcySelect: document.getElementById('display-ccy'),
+                logFilterTag: document.getElementById('log-filter-tag'), filterStats: document.getElementById('filter-stats'),
+                activityList: document.getElementById('activity-list'), tagSuggestions: document.getElementById('tag-suggestions'),
+                peopleList: document.getElementById('people-list'), qaParts: document.getElementById('qa-parts'),
+                qaTagArea: document.getElementById('qa-tag-area'), qaTagInput: document.getElementById('qa-tag-input'),
+                balancesList: document.getElementById('balances-list'), summaryOutput: document.getElementById('summary-output'),
+                totalNote: document.getElementById('total-note'), txCode: document.getElementById('tx-code')
+            };
+
+            function updateStamp() {
+                const now = new Date().toLocaleString();
+                UI.syncStamp.textContent = "Last Synced: " + now;
+                localStorage.setItem('splitter_last_sync', now);
+            }
+
+            // --- CLOUD SYNC ---
+            document.getElementById('cloud-save-btn').onclick = async () => {
+                const url = UI.cloudUrl.value.trim(); if(!url) return alert("Paste URL.");
+                UI.cloudStatus.textContent = "Saving...";
+                const data = JSON.stringify({ people: state.people, log: state.log, settings: { displayCcy: state.displayCcy } });
+                try {
+                    await fetch(url, { method: 'POST', mode: 'no-cors', body: data });
+                    UI.cloudStatus.textContent = "Saved to Cloud.";
+                    localStorage.setItem('splitter_cloud_url', url);
+                    updateStamp();
+                } catch(e) { UI.cloudStatus.textContent = "Save failed."; }
+            };
+
+            document.getElementById('cloud-load-btn').onclick = function() {
+                const url = UI.cloudUrl.value.trim(); if(!url) return alert("Need URL.");
+                UI.cloudStatus.textContent = "Loading...";
+                const callbackName = 'cloudCallback_' + Date.now();
+                window[callbackName] = (data) => {
+                    state.people = data.people || []; state.log = data.log || [];
+                    if(data.settings) state.displayCcy = data.settings.displayCcy || "NZD";
+                    renderPeople(); renderLog(); updateDropdowns(); syncTagUI();
+                    UI.cloudStatus.textContent = "Load Successful.";
+                    updateStamp();
+                    document.body.removeChild(script); delete window[callbackName];
+                };
+                const script = document.createElement('script');
+                script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+                document.body.appendChild(script);
+            };
+
+            if(localStorage.getItem('splitter_cloud_url')) UI.cloudUrl.value = localStorage.getItem('splitter_cloud_url');
+            if(localStorage.getItem('splitter_last_sync')) UI.syncStamp.textContent = "Last Synced: " + localStorage.getItem('splitter_last_sync');
+
+            // --- CORE LOGIC ---
+            async function fetchFX() {
+                try {
+                    const r = await fetch("https://api.frankfurter.app/latest");
+                    const d = await r.json();
+                    if(d && d.rates) { state.rates = d.rates; state.rates["EUR"] = 1.0; document.getElementById('fx-status').textContent = "FX Live (" + d.date + ")"; }
+                    updateDropdowns();
+                } catch(e) { updateDropdowns(); }
+            }
+
+            function updateDropdowns() {
+                const codes = Object.keys(state.rates).sort();
+                UI.displayCcySelect.innerHTML = ""; codes.forEach(c => UI.displayCcySelect.add(new Option(c, c)));
+                UI.displayCcySelect.value = state.displayCcy;
+                const qaCcy = document.getElementById('qa-ccy');
+                qaCcy.innerHTML = `<option value="">Default (NZD)</option>`;
+                codes.forEach(c => qaCcy.add(new Option(c, c)));
+                [document.getElementById('qa-payer'), UI.qaParts, document.getElementById('pb-from'), document.getElementById('pb-to')].forEach(sel => {
+                    if(!sel) return;
+                    const cur = Array.from(sel.selectedOptions).map(o => o.value);
+                    sel.innerHTML = ""; state.people.forEach(p => sel.add(new Option(p,p)));
+                    Array.from(sel.options).forEach(o => { if(cur.includes(o.value)) o.selected = true; });
+                });
+            }
+
+            window.removeItem = (i) => { state.log.splice(i, 1); renderLog(); };
+            window.removeLogTag = (ri, ti) => { state.log[ri].tags.splice(ti, 1); renderLog(); };
+
+            function renderPeople() { UI.peopleList.innerHTML = state.people.map((p, i) => `<tr><td>${p}</td><td><button class="delete-btn" onclick="state.people.splice(${i},1);renderPeople();updateDropdowns();">❌</button></td></tr>`).join(''); }
+            document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; }};
+
+            function renderLog() {
+                let fTotal = 0; const target = state.rates[state.displayCcy] || 1;
+                UI.activityList.innerHTML = state.log.map((item, i) => {
+                    if(state.activeFilter && (!item.tags || !item.tags.includes(state.activeFilter))) return "";
+                    const isExp = item.type === 'exp';
+                    const sRate = (item.currency && state.rates[item.currency]) ? state.rates[item.currency] : target;
+                    fTotal += Number(item.amount) * (target / sRate);
+                    const p = (item.tags || []).map((t, ti) => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeLogTag(${i},${ti})">×</span></span>`).join('');
+                    return `<tr style="color:${isExp ? 'inherit' : 'var(--payback-color)'}">
+                        <td>${isExp?'EXP':'PAY'}</td><td>${item.payer}</td><td>${isExp?item.participants.length+' ppl':item.to}</td>
+                        <td>${Number(item.amount).toFixed(2)} ${item.currency || state.displayCcy}</td>
+                        <td><div class="tag-container">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
+                        <td>${item.note || ""}</td>
+                        <td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td></tr>`;
+                }).join('');
+                UI.filterStats.textContent = state.activeFilter ? `Filtered: ${state.displayCcy} ${fTotal.toFixed(2)}` : "";
+                syncTagUI();
+            }
+
+            window.handleAutoTag = (e, sc, idx) => { if(state.tagMasterList.has(e.target.value.trim())) { commitTag(e.target.value.trim(), sc, idx); e.target.value = ''; }};
+            window.handleTagKey = (e, sc, idx) => { if(e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitTag(e.target.value.trim().replace(',',''), sc, idx); e.target.value = ''; }};
+            function commitTag(val, sc, idx) {
+                if(!val) return;
+                if(sc === 'form') { if(!currentQaTags.includes(val)) currentQaTags.push(val); renderInputTags(); }
+                else { if(!state.log[idx].tags.includes(val)) state.log[idx].tags.push(val); renderLog(); }
+                state.tagMasterList.add(val); syncTagUI();
+            }
+            function renderInputTags() {
+                const input = UI.qaTagInput; UI.qaTagArea.innerHTML = '';
+                currentQaTags.forEach((t, i) => { const p = document.createElement('span'); p.className='tag-pill'; p.innerHTML=`${t} <span class="tag-remove" onclick="currentQaTags.splice(${i},1);renderInputTags();">×</span>`; UI.qaTagArea.appendChild(p); });
+                UI.qaTagArea.appendChild(input); input.focus();
+            }
+            function syncTagUI() {
+                state.tagMasterList.clear(); state.log.forEach(item => (item.tags || []).forEach(t => state.tagMasterList.add(t)));
+                UI.tagSuggestions.innerHTML = Array.from(state.tagMasterList).sort().map(t => `<option value="${t}">`).join('');
+                const curr = UI.logFilterTag.value; UI.logFilterTag.innerHTML = '<option value="">All Tags</option>';
+                Array.from(state.tagMasterList).sort().forEach(t => UI.logFilterTag.add(new Option(t,t)));
+                UI.logFilterTag.value = curr;
+            }
+
+            document.getElementById('add-expense-btn').onclick = () => {
+                const a = parseFloat(document.getElementById('qa-amount').value); const p = Array.from(UI.qaParts.selectedOptions).map(o => o.value);
+                const l = UI.qaTagInput.value.trim(); if(l) { currentQaTags.push(l); state.tagMasterList.add(l); }
+                if(a>0 && p.length>0) { state.log.push({type:'exp', payer:document.getElementById('qa-payer').value, amount:a, currency:document.getElementById('qa-ccy').value, participants:p, tags:[...currentQaTags], note:document.getElementById('qa-note').value}); currentQaTags=[]; renderInputTags(); renderLog(); document.getElementById('qa-amount').value=''; document.getElementById('qa-note').value=''; }
+            };
+
+            document.getElementById('calculate-btn').onclick = () => {
+                let net = {}; state.people.forEach(p => net[p] = 0); let spent = 0;
+                state.log.forEach(item => {
+                    const base = state.rates[state.displayCcy] || 1; const conv = base / (state.rates[item.currency] || base);
+                    const a = Number(item.amount) * conv;
+                    if(item.type==='exp') { spent += a; net[item.payer] += a; let s = a/item.participants.length; item.participants.forEach(p => { if(net.hasOwnProperty(p)) net[p] -= s; }); }
+                    else { net[item.payer] += a; net[item.to] -= a; }
+                });
+                UI.summaryOutput.style.display = 'block'; UI.totalNote.textContent = `Total Spend: ${state.displayCcy} ${spent.toFixed(2)}`;
+                UI.balancesList.innerHTML = state.people.map(p => `<tr><td>${p}</td><td>${net[p] > 0.01 ? 'Owed' : (net[p] < -0.01 ? 'Owes' : 'Square')} ${Math.abs(net[p]).toFixed(2)}</td></tr>`).join('');
+                UI.txCode.textContent = settle(state.people, state.people.map(p => net[p])).map(t => `${t.from} pays ${t.to}: ${t.amount.toFixed(2)}`).join('\n');
+            };
+
+            function settle(names, bals) {
+                let d = names.map((n, i) => ({ n, a: -bals[i] })).filter(x => x.a > 0.01).sort((a,b) => b.a - a.a);
+                let c = names.map((n, i) => ({ n, a: bals[i] })).filter(x => x.a > 0.01).sort((a,b) => b.a - a.a);
+                let tx = []; let i=0, j=0;
+                while(i < d.length && j < c.length) {
+                    let amt = Math.min(d[i].a, c[j].a); tx.push({ from: d[i].n, to: c[j].n, amount: amt });
+                    d[i].a -= amt; c[j].a -= amt; if(d[i].a < 0.01) i++; if(c[j].a < 0.01) j++;
+                }
+                return tx;
+            }
+
+            fetchFX();
+            new Sortable(UI.activityList, { animation: 150, onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); }});
+        });
+    </script>
+</body>
+</html>
