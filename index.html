@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💸 Master Trip Splitter (Mobile-Steady)</title>
+    <title>💸 Trip Splitter</title>
     <style>
         :root {
             --bg-color: #f0f2f6; --widget-bg: #ffffff; --text-color: #31333f; --border-color: #e0e0e0;
@@ -15,7 +15,7 @@
         @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
         .column { background: var(--widget-bg); border-radius: 8px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
         label { display: block; font-weight: 600; margin-bottom: 5px; margin-top: 10px; }
-        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); box-sizing: border-box; font-size: 16px; } /* 16px prevents iOS zoom */
+        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         button.primary { background: var(--primary-color); color: white; }
         button.payback-btn { background: var(--payback-color); color: white; }
@@ -24,18 +24,14 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8em; }
         th, td { border: 1px solid var(--border-color); padding: 6px; text-align: left; }
         th { background-color: #f9f9f9; }
-        
-        /* DRAG HANDLE STYLING */
         .drag-handle { cursor: grab; color: #ccc; padding-right: 5px; font-size: 1.2em; display: inline-block; }
-        .drag-handle:active { cursor: grabbing; }
-        
         .tag-pill { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; display: flex; align-items: center; gap: 4px; color: #333; margin: 2px 0; }
         .tag-remove { cursor: pointer; font-weight: bold; color: #888; border: none; background: none; font-size: 1.1em; }
         .tag-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 120px; }
         .inline-tag-input { border: none !important; background: transparent !important; width: 60px !important; outline: none; padding: 2px !important; }
         .delete-btn { background: none; color: var(--primary-color); font-size: 1.1em; width: auto; margin: 0; padding: 0; }
         .summary-box { background: #f1f8e9; border: 2px solid var(--payback-color); padding: 16px; margin-top: 16px; border-radius: 6px; }
-        .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; }
+        .sync-stamp { font-size: 0.75em; color: #666; font-style: italic; margin-top: 5px; display: block; text-align: center; }
         .quick-add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .full-span { grid-column: 1 / -1; }
     </style>
@@ -52,11 +48,10 @@
             <h2>Cloud Sync</h2>
             <input type="text" id="cloud-url" value="PASTE_YOUR_FULL_APPS_SCRIPT_URL_HERE">
             <div style="display: flex; gap: 8px;">
-                <button id="cloud-load-btn" class="cloud">☁️ Load</button>
-                <button id="cloud-save-btn" class="cloud">☁️ Save</button>
+                <button id="cloud-load-btn" class="cloud">☁️ Load Latest</button>
+                <button id="cloud-save-btn" class="secondary" style="font-size: 0.8em;">Manual Save</button>
             </div>
-            <span id="sync-stamp" class="sync-stamp">Last Synced: Never</span>
-            <small id="cloud-status" style="color: #666; font-weight: bold;"></small>
+            <small id="cloud-status" style="color: #666; font-weight: bold; display: block; text-align: center; margin-top: 5px;"></small>
 
             <hr>
             <h2>People</h2>
@@ -70,7 +65,7 @@
             <label>Settlement Currency</label>
             <select id="display-ccy"></select>
             <small id="fx-status">Connecting FX...</small>
-            <button id="reset-btn" class="secondary" style="color: var(--primary-color); font-size: 0.8em;">🔄 Reset Session</button>
+            <button id="reset-btn" class="secondary" style="color: var(--primary-color); font-size: 0.7em;">🔄 Hard Reset</button>
         </div>
 
         <div class="column">
@@ -89,18 +84,18 @@
                         <input type="text" id="qa-tag-input" list="tag-suggestions" class="inline-tag-input" placeholder="+ Tag" oninput="handleAutoTag(event, 'form')" onkeydown="handleTagKey(event, 'form')">
                     </div>
                 </div>
-                <div class="full-span"><input type="text" id="qa-note" placeholder="What was it? (e.g. Pad Thai)"></div>
+                <div class="full-span"><input type="text" id="qa-note" placeholder="What was it?"></div>
             </div>
-            <button id="add-expense-btn" class="primary">Add Shared Expense</button>
+            <button id="add-expense-btn" class="primary">Add & Auto-Save</button>
 
             <hr>
-            <h2 style="color: var(--payback-color);">2. Record Cash Payback</h2>
+            <h2 style="color: var(--payback-color);">2. Cash Payback</h2>
             <div class="quick-add-grid">
                 <div><label>From</label><select id="pb-from"></select></div>
                 <div><label>To</label><select id="pb-to"></select></div>
                 <div><label>Amount</label><input type="number" id="pb-amount" step="1"></div>
             </div>
-            <button id="add-payback-btn" class="payback-btn">Record Payback</button>
+            <button id="add-payback-btn" class="payback-btn">Record & Auto-Save</button>
 
             <h2 style="margin-top: 30px;">Activity Log</h2>
             <div style="display:flex; align-items:center; gap:8px; background:#f8f9fa; padding:8px; border-radius:6px; margin-bottom:10px;">
@@ -114,12 +109,13 @@
                     <tbody id="activity-list"></tbody>
                 </table>
             </div>
+            <span id="sync-stamp" class="sync-stamp">Sync Status: Standing By</span>
 
             <button id="calculate-btn" class="primary" style="font-size: 1.2em; height: 50px; margin-top: 20px;">CALCULATE FINAL SPLIT</button>
             
             <div id="summary-output" class="summary-box" style="display: none;">
                 <div id="total-note" style="margin-bottom:10px; font-weight:bold;"></div>
-                <table style="background:white; margin-bottom:10px;"><tbody id="balances-list"></tbody></table>
+                <table style="background:white; margin-bottom:10px; width: 100%;"><tbody id="balances-list"></tbody></table>
                 <pre id="tx-code" style="font-size: 0.9em;"></pre>
             </div>
         </div>
@@ -141,22 +137,22 @@
                 txCode: document.getElementById('tx-code')
             };
 
-            function updateStamp() {
-                const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit', day:'numeric', month:'short'});
-                UI.syncStamp.textContent = "Last Synced: " + now;
-                localStorage.setItem('splitter_last_sync', now);
-            }
-
-            // --- CLOUD SYNC ---
-            document.getElementById('cloud-save-btn').onclick = async () => {
-                const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return alert("Check your Apps Script URL, Mack.");
-                UI.cloudStatus.textContent = "Saving...";
+            // --- AUTO-SAVE LOGIC ---
+            async function triggerAutoSave() {
+                const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return;
+                UI.cloudStatus.textContent = "Auto-Saving...";
                 const data = JSON.stringify({ people: state.people, log: state.log, settings: { displayCcy: state.displayCcy } });
                 try {
                     await fetch(url, { method: 'POST', mode: 'no-cors', body: data });
-                    UI.cloudStatus.textContent = "Saved."; updateStamp();
-                } catch(e) { UI.cloudStatus.textContent = "Save failed."; }
-            };
+                    const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit'});
+                    UI.syncStamp.textContent = "Last Auto-Saved: " + now;
+                    UI.cloudStatus.textContent = "";
+                    localStorage.setItem('splitter_last_sync', now);
+                } catch(e) { UI.cloudStatus.textContent = "Auto-Save Failed."; }
+            }
+
+            // --- CLOUD SYNC ---
+            document.getElementById('cloud-save-btn').onclick = triggerAutoSave;
 
             document.getElementById('cloud-load-btn').onclick = function() {
                 const url = UI.cloudUrl.value.trim(); if(!url || url.includes("PASTE_YOUR")) return alert("URL Missing.");
@@ -166,7 +162,9 @@
                     state.people = data.people || []; state.log = data.log || [];
                     if(data.settings) state.displayCcy = data.settings.displayCcy || "NZD";
                     renderPeople(); renderLog(); updateDropdowns(); syncTagUI();
-                    UI.cloudStatus.textContent = "Loaded."; updateStamp();
+                    UI.cloudStatus.textContent = "Loaded.";
+                    const now = new Date().toLocaleString([], {hour: '2-digit', minute:'2-digit'});
+                    UI.syncStamp.textContent = "Last Loaded: " + now;
                     document.body.removeChild(script); delete window[callbackName];
                 };
                 const script = document.createElement('script');
@@ -174,7 +172,7 @@
                 document.body.appendChild(script);
             };
 
-            if(localStorage.getItem('splitter_last_sync')) UI.syncStamp.textContent = "Last Synced: " + localStorage.getItem('splitter_last_sync');
+            if(localStorage.getItem('splitter_last_sync')) UI.syncStamp.textContent = "Last Activity: " + localStorage.getItem('splitter_last_sync');
 
             // --- FX & DROPDOWNS ---
             async function fetchFX() {
@@ -202,27 +200,22 @@
             }
 
             // --- GLOBAL FUNCTIONS ---
-            window.removeItem = (i) => { if(confirm("Delete this line?")) { state.log.splice(i, 1); renderLog(); } };
-            window.removeLogTag = (ri, ti) => { state.log[ri].tags.splice(ti, 1); renderLog(); };
+            window.removeItem = (i) => { if(confirm("Delete this line?")) { state.log.splice(i, 1); renderLog(); triggerAutoSave(); } };
+            window.removeLogTag = (ri, ti) => { state.log[ri].tags.splice(ti, 1); renderLog(); triggerAutoSave(); };
 
             function renderPeople() { UI.peopleList.innerHTML = state.people.map((p, i) => `<tr><td>${p}</td><td style="width:10px;"><button class="delete-btn" onclick="state.people.splice(${i},1);renderPeople();updateDropdowns();">❌</button></td></tr>`).join(''); }
-            document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; }};
+            document.getElementById('add-person-btn').onclick = () => { const n = document.getElementById('person-name').value.trim(); if(n) { state.people.push(n); renderPeople(); updateDropdowns(); document.getElementById('person-name').value=""; triggerAutoSave(); }};
 
             function renderLog() {
-                const target = state.rates[state.displayCcy] || 1;
                 UI.activityList.innerHTML = state.log.map((item, i) => {
                     if(state.activeFilter && (!item.tags || !item.tags.includes(state.activeFilter))) return "";
                     const isExp = item.type === 'exp';
                     const p = (item.tags || []).map((t, ti) => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeLogTag(${i},${ti})">×</span></span>`).join('');
-                    
                     return `<tr style="color:${isExp ? 'inherit' : 'var(--payback-color)'}">
-                        <td class="drag-handle">☰</td>
-                        <td>${isExp?'EXP':'PAY'}</td>
-                        <td>${item.payer}</td>
+                        <td class="drag-handle">☰</td><td>${isExp?'EXP':'PAY'}</td><td>${item.payer}</td>
                         <td>${Number(item.amount).toFixed(0)} ${item.currency || state.displayCcy}</td>
                         <td><div class="tag-container">${p}<input type="text" class="inline-tag-input" list="tag-suggestions" oninput="handleAutoTag(event,'log',${i})" onkeydown="handleTagKey(event,'log',${i})"></div></td>
-                        <td>${item.note || ""}</td>
-                        <td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
+                        <td>${item.note || ""}</td><td><button class="delete-btn" onclick="removeItem(${i})">❌</button></td>
                     </tr>`;
                 }).join('');
                 syncTagUI();
@@ -233,7 +226,7 @@
             function commitTag(val, sc, idx) {
                 if(!val) return;
                 if(sc === 'form') { if(!currentQaTags.includes(val)) currentQaTags.push(val); renderInputTags(); }
-                else { if(!state.log[idx].tags.includes(val)) state.log[idx].tags.push(val); renderLog(); }
+                else { if(!state.log[idx].tags.includes(val)) state.log[idx].tags.push(val); renderLog(); triggerAutoSave(); }
                 state.tagMasterList.add(val); syncTagUI();
             }
             function renderInputTags() {
@@ -252,12 +245,12 @@
             document.getElementById('add-expense-btn').onclick = () => {
                 const a = parseFloat(document.getElementById('qa-amount').value); const p = Array.from(UI.qaParts.selectedOptions).map(o => o.value);
                 const l = UI.qaTagInput.value.trim(); if(l) { currentQaTags.push(l); }
-                if(a>0 && p.length>0) { state.log.push({type:'exp', payer:document.getElementById('qa-payer').value, amount:a, currency:document.getElementById('qa-ccy').value, participants:p, tags:[...currentQaTags], note:document.getElementById('qa-note').value}); currentQaTags=[]; renderInputTags(); renderLog(); document.getElementById('qa-amount').value=''; document.getElementById('qa-note').value=''; }
+                if(a>0 && p.length>0) { state.log.push({type:'exp', payer:document.getElementById('qa-payer').value, amount:a, currency:document.getElementById('qa-ccy').value, participants:p, tags:[...currentQaTags], note:document.getElementById('qa-note').value}); currentQaTags=[]; renderInputTags(); renderLog(); document.getElementById('qa-amount').value=''; document.getElementById('qa-note').value=''; triggerAutoSave(); }
             };
 
             document.getElementById('add-payback-btn').onclick = () => {
                 const a = parseFloat(document.getElementById('pb-amount').value); const f = document.getElementById('pb-from').value; const t = document.getElementById('pb-to').value;
-                if(a>0 && f!==t) { state.log.push({type:'pay', payer:f, to:t, amount:a, tags:[], note:'Cash Payback'}); renderLog(); document.getElementById('pb-amount').value=''; }
+                if(a>0 && f!==t) { state.log.push({type:'pay', payer:f, to:t, amount:a, tags:[], note:'Cash Payback'}); renderLog(); document.getElementById('pb-amount').value=''; triggerAutoSave(); }
             };
 
             document.getElementById('calculate-btn').onclick = () => {
@@ -268,7 +261,7 @@
                     if(item.type==='exp') { spent += a; net[item.payer] += a; let s = a/item.participants.length; item.participants.forEach(p => { if(net.hasOwnProperty(p)) net[p] -= s; }); }
                     else { net[item.payer] += a; net[item.to] -= a; }
                 });
-                UI.summaryOutput.style.display = 'block'; UI.totalNote.textContent = `Total Spend: NZD ${spent.toFixed(0)}`;
+                UI.summaryOutput.style.display = 'block'; UI.totalNote.textContent = `Trip Total: NZD ${spent.toFixed(0)}`;
                 UI.balancesList.innerHTML = state.people.map(p => `<tr><td>${p}</td><td>${net[p] > 0.01 ? 'Owed' : (net[p] < -0.01 ? 'Owes' : 'Square')} ${Math.abs(net[p]).toFixed(2)}</td></tr>`).join('');
                 UI.txCode.textContent = settle(state.people, state.people.map(p => net[p])).map(t => `${t.from} pays ${t.to}: $${t.amount.toFixed(2)}`).join('\n');
             };
@@ -286,11 +279,10 @@
 
             fetchFX();
             new Sortable(UI.activityList, { 
-                handle: '.drag-handle', // ONLY DRAG BY THE HANDLE
-                animation: 150, 
-                onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); }
+                handle: '.drag-handle', animation: 150, 
+                onEnd: (evt) => { const item = state.log.splice(evt.oldIndex, 1)[0]; state.log.splice(evt.newIndex, 0, item); renderLog(); triggerAutoSave(); }
             });
-            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local session?")) location.reload(); };
+            document.getElementById('reset-btn').onclick = () => { if(confirm("Clear local?")) location.reload(); };
         });
     </script>
 </body>
